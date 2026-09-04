@@ -1,0 +1,42 @@
+.sidebar {
+    display: flex;
+    justify-content: left;
+    align-items: flex-end;
+}
+
+.body {
+    width: 12vw;
+    height: 92vh;
+    background: #333333;
+    border-top: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.itens {
+    display: flex;
+    flex-direction: column;
+    margin: 30px;
+    gap: 30px;
+}
+
+.sidebar-link {
+    display: flex;
+    text-decoration: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    transition: 0.2s;
+    font-family: 'Poppins', sans-serif;
+    font-size: x-large;
+    margin-top: 20px;
+}
+
+.sidebar-link:hover {
+    transform: scale(1.07);
+    margin-left: 4px;
+}
+
+.sidebar-link:active {
+    transform: scale(1);
+}
