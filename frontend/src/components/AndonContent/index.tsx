@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import './andonContent.css';
+import './andoncontent.css';
 
 export interface AndonItem {
     partNumber: string;

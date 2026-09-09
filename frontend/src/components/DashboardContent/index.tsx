@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import './dashboardContent.css';
+import './dashboardcontent.css';
 import {
     Chart as ChartJS,
     CategoryScale,
