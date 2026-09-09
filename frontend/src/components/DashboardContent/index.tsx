@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import './dashboardcontent.css';
+import { api } from '@/services/api'; // Ajuste o caminho conforme o seu projeto
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -23,21 +24,47 @@ ChartJS.register(
     Legend
 );
 
+interface DashboardData {
+    alertasPorMes: {
+        labels: string[];
+        valores: number[];
+    };
+    statusAlertas: {
+        labels: string[];
+        valores: number[];
+    };
+    alertasPorTipo: {
+        labels: string[];
+        valores: number[];
+    };
+}
+
 const DashboardContent = () => {
     const [loading, setLoading] = useState<boolean>(true);
+    const [data, setData] = useState<DashboardData | null>(null);
 
     useEffect(() => {
-        // Simula carregamento do banco de dados
-        const timer = setTimeout(() => setLoading(false), 300);
-        return () => clearTimeout(timer);
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const response = await api.get<DashboardData>('/dashboard');
+                setData(response.data);
+            } catch (error) {
+                console.error('Erro ao buscar dados do Dashboard:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
     }, []);
 
     // 1. Dados para o gráfico de barras (QTD alertas por mês)
     const barData = {
-        labels: ['JAN', 'FEV', 'MAR', 'ABR', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'],
+        labels: data?.alertasPorMes.labels || [],
         datasets: [
             {
-                data: [78, 60, 45, 30, 40, 33, 45, 55, 46, 68, 66],
+                data: data?.alertasPorMes.valores || [],
                 backgroundColor: '#4C84FF',
                 borderRadius: 8,
             },
@@ -65,10 +92,10 @@ const DashboardContent = () => {
 
     // 2. Dados para o primeiro gráfico de Pizza (Status alertas)
     const pieStatusData = {
-        labels: ['SEM TRATATIVA', 'EM ANDAMENTO', 'CONCLUÍDO'],
+        labels: data?.statusAlertas.labels || [],
         datasets: [
             {
-                data: [15.8, 26.3, 57.9],
+                data: data?.statusAlertas.valores || [],
                 backgroundColor: ['#FF5B5C', '#FFD043', '#6FD953'],
                 borderWidth: 1,
             },
@@ -77,10 +104,10 @@ const DashboardContent = () => {
 
     // 3. Dados para o segundo gráfico de Pizza (QTD alertas por tipo)
     const pieTypeData = {
-        labels: ['HIBE', 'FHMI', 'MAZE'],
+        labels: data?.alertasPorTipo.labels || [],
         datasets: [
             {
-                data: [15.8, 26.3, 57.9],
+                data: data?.alertasPorTipo.valores || [],
                 backgroundColor: ['#00429D', '#73A5FF', '#C2DCFF'],
                 borderWidth: 1,
             },
@@ -105,7 +132,7 @@ const DashboardContent = () => {
             <h1 className="page-title">Dashboard</h1>
 
             <div className="dashboard-card">
-                {loading ? (
+                {loading || !data ? (
                     <div className="loading-container">Carregando indicadores...</div>
                 ) : (
                     <div className="dashboard-grid">

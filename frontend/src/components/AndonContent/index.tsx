@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { api } from '@/services/api';
 import './andoncontent.css';
 
 export interface AndonItem {
@@ -16,17 +17,9 @@ const AndonContent = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                // Exemplo de chamada à API / banco de dados:
-                const mockData: AndonItem[] = [
-                    {
-                        partNumber: 'F000.899.4VR',
-                        descricao: 'FOLHA A4',
-                        status: '01/09: PO em processamento',
-                        responsavel: 'Hallyessa',
-                    },
-                    // Adicione mais itens vindos do banco
-                ];
-                setAndonData(mockData);
+                // Busca os dados diretamente da API no Backend
+                const response = await api.get<AndonItem[]>('/andon');
+                setAndonData(response.data);
             } catch (error) {
                 console.error('Erro ao buscar dados do Andon:', error);
             } finally {

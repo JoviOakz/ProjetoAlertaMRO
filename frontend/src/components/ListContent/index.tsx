@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { api } from '@/services/api'; // Ajuste o caminho de import da sua api se necessário
 import './listcontent.css';
 
-// Interfaces dos dados (ajuste conforme os campos reais da sua API)
+// Interfaces dos dados
 export interface MaterialAcimaMedia {
     pn: string;
     mrp: string;
@@ -17,33 +18,28 @@ export interface MaterialTendencia {
     status: 'SUBINDO' | 'DESCENDO';
 }
 
+interface ListaApiResponse {
+    materiaisMedia: MaterialAcimaMedia[];
+    materiaisTendencia: MaterialTendencia[];
+}
+
 const ListContent = () => {
     const [materiaisMedia, setMateriaisMedia] = useState<MaterialAcimaMedia[]>([]);
     const [materiaisTendencia, setMateriaisTendencia] = useState<MaterialTendencia[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
-        // Exemplo de busca no banco / API
         const fetchData = async () => {
             try {
                 setLoading(true);
 
-                // Substitua pelas suas chamadas de API reais (ex: fetch('/api/materiais-media'))
-                // Exemplo com dados simulados (mock):
-                const mockMedia: MaterialAcimaMedia[] = [
-                    { pn: '123456', mrp: 'M01', descricao: 'Rolamento Especial', valorMedia: 120.5, delta: '+15%' },
-                    { pn: '789012', mrp: 'M02', descricao: 'Parafuso Sextavado', valorMedia: 45.0, delta: '+8%' },
-                ];
+                // Chamada real para o endpoint do backend Express
+                const response = await api.get<ListaApiResponse>('/lista');
 
-                const mockTendencia: MaterialTendencia[] = [
-                    { pn: '345678', mrp: 'M01', descricao: 'Vedações Industriais', status: 'SUBINDO' },
-                    { pn: '901234', mrp: 'M03', descricao: 'Sensor Optico', status: 'SUBINDO' },
-                ];
-
-                setMateriaisMedia(mockMedia);
-                setMateriaisTendencia(mockTendencia);
+                setMateriaisMedia(response.data.materiaisMedia);
+                setMateriaisTendencia(response.data.materiaisTendencia);
             } catch (error) {
-                console.error('Erro ao carregar dados:', error);
+                console.error('Erro ao carregar dados da API:', error);
             } finally {
                 setLoading(false);
             }
