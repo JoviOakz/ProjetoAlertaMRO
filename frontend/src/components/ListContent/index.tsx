@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import './listContent.css';
+import './listcontent.css';
 
 // Interfaces dos dados (ajuste conforme os campos reais da sua API)
 export interface MaterialAcimaMedia {
