@@ -1,17 +1,40 @@
-import './sidebar.css'
+import './sidebar.css';
 
-function Sidebar() {
-    return (
-        <div className='sidebar'>
-            <div className='body'>
-                <div className='itens'>
-                    <span className='sidebar-link'>Lista</span>
-                    <span className='sidebar-link'>Andon</span>
-                    <span className='sidebar-link'>Dashboard</span>
-                </div>
-            </div>
-        </div>
-    );
+interface SidebarProps {
+    isOpen: boolean;
+    onToggle: () => void;
+    activeMenu: string;
+    onSelectMenu: (menu: string) => void;
 }
 
-export default Sidebar
+const Sidebar = ({ isOpen, onToggle, activeMenu, onSelectMenu }: SidebarProps) => {
+    const menuItems = [
+        { id: 'lista', label: 'Lista' },
+        { id: 'andon', label: 'Andon' },
+        { id: 'dashboard', label: 'Dashboard' },
+    ];
+
+    return (
+        <aside className={`sidebar ${isOpen ? 'open' : 'collapsed'}`}>
+            <div className="sidebar-header">
+                <button className="toggle-button" onClick={onToggle} aria-label="Alternar Menu">
+                    <span className="hamburger-icon">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
+                </button>
+            </div>
+
+            <nav className="sidebar-nav">
+                {menuItems.map((item) => (
+                    <button key={item.id} className={`sidebar-link ${activeMenu === item.id ? 'active' : ''}`} onClick={() => onSelectMenu(item.id)}>
+                        <span className="link-text">{item.label}</span>
+                    </button>
+                ))}
+            </nav>
+        </aside>
+    );
+};
+
+export default Sidebar;

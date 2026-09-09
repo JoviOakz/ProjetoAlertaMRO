@@ -1,3 +1,24 @@
-.container {
+/* Container de tela inteira sem scroll global desnecessário */
+.layout-container {
     display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+/* Corpo que segura a Sidebar e a área de Conteúdo */
+.layout-body {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - 60px); /* Subtrai a altura do Header */
+    overflow: hidden;
+}
+
+/* Área central dinâmica (HomeContent) */
+.main-content {
+    flex: 1;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    overflow-y: auto; /* Adiciona scroll apenas ao conteúdo caso transborde */
 }

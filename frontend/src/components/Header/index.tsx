@@ -1,17 +1,20 @@
-import './header.css'
-import logo from '@/assets/bosch_logo.svg'
-import color_line from '@/assets/color_line.png'
+import './header.css';
+import logo from '@/assets/bosch_logo.svg';
+import colorLine from '@/assets/color_line.png';
 
 const Header = () => {
     return (
-        <div className='container'>
-            <img className='color_line' src={color_line} />
-            <div className='column'>
-                <img className='logo' src={logo} alt='logo' />
-                <button className='header-button'>User Icon</button>
+        <header className="header-container">
+            <img className="color-line" src={colorLine} alt="" aria-hidden="true" />
+            <div className="header-content">
+                <div className="header-left">
+                    <img className="header-logo" src={logo} alt="Logo Bosch" />
+                </div>
+                <h2>Painel de Trabalho - MRO CtP</h2>
+                <button className="header-user-button">User Icon</button>
             </div>
-        </div>
+        </header>
     );
-}
+};
 
-export default Header
+export default Header;
