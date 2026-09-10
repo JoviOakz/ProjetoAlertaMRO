@@ -1,23 +1,26 @@
 import { Request, Response } from 'express';
+import { db } from '../database/connection.js'; // Ajuste o caminho do seu knex/database conforme o seu projeto
 
 export class ListController {
   async getListaData(req: Request, res: Response) {
     try {
-      // Dados para a primeira tabela: MATERIAIS > MÉDIA
-      const materiaisMedia = [
-        { pn: '123456', mrp: 'M01', descricao: 'Rolamento Especial', valorMedia: 120.5, delta: '+15%' },
-        { pn: '789012', mrp: 'M02', descricao: 'Parafuso Sextavado', valorMedia: 45.0, delta: '+8%' },
-        { pn: '554433', mrp: 'M01', descricao: 'Graxa Sintética 1Kg', valorMedia: 88.0, delta: '+22%' },
-      ];
+      const registros = await db('materiais_movimentacoes').select('*');
 
-      // Dados para a segunda tabela: TENDÊNCIA
-      const materiaisTendencia = [
-        { pn: '345678', mrp: 'M01', descricao: 'Vedações Industriais', status: 'SUBINDO' },
-        { pn: '901234', mrp: 'M03', descricao: 'Sensor Óptico', status: 'SUBINDO' },
-        { pn: '887766', mrp: 'M02', descricao: 'Filtro Pneumático', status: 'DESCENDO' },
-      ];
+      const materiaisMedia = registros.slice(0, 20).map((item: any) => ({
+        pn: item.material,
+        mrp: item.mrp_id,
+        descricao: item.descricao || 'N/D',
+        valorMedia: item.total_quantity || 0,
+        delta: '0%'
+      }));
 
-      // Retorna os dois conjuntos de dados em um único objeto JSON
+      const materiaisTendencia = registros.slice(20, 40).map((item: any) => ({
+        pn: item.material,
+        mrp: item.mrp_id,
+        descricao: item.descricao || 'N/D',
+        status: 'ESTÁVEL'
+      }));
+
       return res.json({
         materiaisMedia,
         materiaisTendencia,
