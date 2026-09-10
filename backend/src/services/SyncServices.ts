@@ -10,14 +10,12 @@ export class SyncService {
         try {
             console.log('🔄 Iniciando sincronização com o Redlake...');
 
-            // Usando o Alias TNS que funcionou no seu Python
             connection = await oracledb.getConnection({
                 user: process.env.ORACLE_USER || 'MAO8CT',
                 password: process.env.ORACLE_PASSWORD || '49l1)f=f3q6A',
                 connectString: process.env.ORACLE_CONN_STRING || 'REDLake_ZeusP_Consumer_Common.world',
             });
 
-            // Query única e completa (com aliasing para bater com as colunas do SQLite)
             const mainQuery = `
                 WITH base AS (
                     SELECT DISTINCT
@@ -69,11 +67,9 @@ export class SyncService {
 
             console.log(`📊 ${rows.length} registros retornados do Redlake. Atualizando banco local...`);
 
-            // Atualiza o SQLite usando transação
             await db.transaction(async (trx) => {
                 await trx('materiais_movimentacoes').del();
 
-                // Insere em lotes (chunking) para maximizar a velocidade no SQLite
                 const chunkSize = 500;
                 for (let i = 0; i < rows.length; i += chunkSize) {
                     const chunk = rows.slice(i, i + chunkSize);

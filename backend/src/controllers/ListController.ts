@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { db } from '../database/connection.js'; // Ajuste o caminho do seu knex/database conforme o seu projeto
+import { db } from '@/database/connection.js';
 
 export class ListController {
   async getListaData(req: Request, res: Response) {

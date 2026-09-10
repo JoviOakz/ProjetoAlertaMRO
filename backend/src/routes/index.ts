@@ -11,7 +11,6 @@ const andonController = new AndonController();
 const dashboardController = new DashboardController();
 const syncController = new SyncController();
 
-// Endpoints da API
 routes.get('/lista', (req, res) => listaController.getListaData(req, res));
 routes.get('/andon', (req, res) => andonController.getAndonData(req, res));
 routes.get('/dashboard', (req, res) => dashboardController.getDashboardData(req, res));
