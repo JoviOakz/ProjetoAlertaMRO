@@ -53,13 +53,13 @@ const AndonContent = () => {
                                 </th>
                                 <th>
                                     <div className="th-content">
-                                        <span>STATUS</span>
+                                        <span>RESPONSÁVEL</span>
                                         <button className="filter-btn" title="Filtrar">▼</button>
                                     </div>
                                 </th>
                                 <th>
                                     <div className="th-content">
-                                        <span>RESPONSÁVEL</span>
+                                        <span>STATUS</span>
                                         <button className="filter-btn" title="Filtrar">▼</button>
                                     </div>
                                 </th>
@@ -79,8 +79,8 @@ const AndonContent = () => {
                                     <tr key={index}>
                                         <td className="font-bold">{item.partNumber}</td>
                                         <td>{item.descricao}</td>
-                                        <td>{item.status}</td>
                                         <td>{item.responsavel}</td>
+                                        <td>{item.status}</td>
                                     </tr>
                                 ))
                             )}
