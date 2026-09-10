@@ -15,6 +15,6 @@ const syncController = new SyncController();
 routes.get('/lista', (req, res) => listaController.getListaData(req, res));
 routes.get('/andon', (req, res) => andonController.getAndonData(req, res));
 routes.get('/dashboard', (req, res) => dashboardController.getDashboardData(req, res));
-routes.get('/sync', (req, res) => syncController.handle(req, res));
+routes.post('/sync', (req, res) => syncController.handle(req, res));
 
 export default routes;
