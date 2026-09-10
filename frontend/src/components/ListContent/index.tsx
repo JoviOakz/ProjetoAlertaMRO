@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { api } from '@/services/api'; // Ajuste o caminho de import da sua api se necessário
+import { api } from '@/services/api';
 import './listcontent.css';
 
-// Interfaces dos dados
 export interface MaterialAcimaMedia {
     pn: string;
     mrp: string;
@@ -33,7 +32,6 @@ const ListContent = () => {
             try {
                 setLoading(true);
 
-                // Chamada real para o endpoint do backend Express
                 const response = await api.get<ListaApiResponse>('/lista');
 
                 setMateriaisMedia(response.data.materiaisMedia);
@@ -49,15 +47,15 @@ const ListContent = () => {
     }, []);
 
     return (
-        <section className="lista-container">
-            <h1 className="page-title">Lista</h1>
+        <section className='lista-container'>
+            <h1 className='page-title'>Lista</h1>
 
-            <div className="tables-grid">
+            <div className='tables-grid'>
                 {/* Tabela 1: Materiais > Média */}
-                <div className="table-card">
-                    <h2 className="card-title">MATERIAIS &gt; MÉDIA ÚLTIMOS 3 MESES</h2>
-                    <div className="table-wrapper">
-                        <table className="custom-table">
+                <div className='table-card'>
+                    <h2 className='card-title'>MATERIAIS &gt; MÉDIA ÚLTIMOS 3 MESES</h2>
+                    <div className='table-wrapper'>
+                        <table className='custom-table'>
                             <thead>
                                 <tr>
                                     <th>PN</th>
@@ -70,11 +68,11 @@ const ListContent = () => {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={5} className="loading-td">Carregando...</td>
+                                        <td colSpan={5} className='loading-td'>Carregando...</td>
                                     </tr>
                                 ) : materiaisMedia.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="empty-td">Nenhum registro encontrado</td>
+                                        <td colSpan={5} className='empty-td'>Nenhum registro encontrado</td>
                                     </tr>
                                 ) : (
                                     materiaisMedia.map((item, index) => (
@@ -83,7 +81,7 @@ const ListContent = () => {
                                             <td>{item.mrp}</td>
                                             <td>{item.descricao}</td>
                                             <td>{item.valorMedia}</td>
-                                            <td className="delta-column">{item.delta}</td>
+                                            <td className='delta-column'>{item.delta}</td>
                                         </tr>
                                     ))
                                 )}
@@ -93,26 +91,26 @@ const ListContent = () => {
                 </div>
 
                 {/* Tabela 2: Materiais com Mudança de Tendência */}
-                <div className="table-card">
-                    <h2 className="card-title">MATERIAIS COM MUDANÇA DE TENDÊNCIA</h2>
-                    <div className="table-wrapper">
-                        <table className="custom-table">
+                <div className='table-card'>
+                    <h2 className='card-title'>MATERIAIS COM MUDANÇA DE TENDÊNCIA</h2>
+                    <div className='table-wrapper'>
+                        <table className='custom-table'>
                             <thead>
                                 <tr>
                                     <th>PN</th>
                                     <th>MRP</th>
                                     <th>DESCRIÇÃO</th>
-                                    <th className="text-right">STATUS</th>
+                                    <th className='text-right'>STATUS</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={4} className="loading-td">Carregando...</td>
+                                        <td colSpan={4} className='loading-td'>Carregando...</td>
                                     </tr>
                                 ) : materiaisTendencia.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="empty-td">Nenhum registro encontrado</td>
+                                        <td colSpan={4} className='empty-td'>Nenhum registro encontrado</td>
                                     </tr>
                                 ) : (
                                     materiaisTendencia.map((item, index) => (

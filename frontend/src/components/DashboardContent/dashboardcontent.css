@@ -60,7 +60,6 @@
     font-size: 1.1rem;
 }
 
-/* Responsividade para telas menores */
 @media (max-width: 900px) {
     .dashboard-grid {
         grid-template-columns: 1fr;

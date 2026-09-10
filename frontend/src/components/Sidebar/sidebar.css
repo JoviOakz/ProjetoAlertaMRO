@@ -8,7 +8,6 @@
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Sidebar Aberta e Fechada */
 .sidebar.open {
     width: 220px;
 }
@@ -17,7 +16,6 @@
     width: 60px;
 }
 
-/* Botão Hambúrguer */
 .sidebar-header {
     padding: 1rem;
     display: flex;
@@ -55,7 +53,6 @@
     background-color: #0056b3;
 }
 
-/* Navegação e Links */
 .sidebar-nav {
     display: flex;
     flex-direction: column;
@@ -89,7 +86,6 @@
     font-weight: 600;
 }
 
-/* Oculta texto na versão recolhida caso queira mostrar apenas ícones no futuro */
 .sidebar.collapsed .link-text {
     opacity: 0;
     pointer-events: none;

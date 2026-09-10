@@ -15,10 +15,10 @@ const Home = () => {
     };
 
     return (
-        <div className="layout-container">
+        <div className='layout-container'>
             <Header />
 
-            <div className="layout-body">
+            <div className='layout-body'>
                 <Sidebar
                     isOpen={isSidebarOpen}
                     onToggle={toggleSidebar}
@@ -26,7 +26,7 @@ const Home = () => {
                     onSelectMenu={setActiveMenu}
                 />
 
-                <main className="main-content">
+                <main className='main-content'>
                     {activeMenu === 'lista' && <ListContent />}
                     {activeMenu === 'andon' && <AndonContent />}
                     {activeMenu === 'dashboard' && <DashboardContent />}

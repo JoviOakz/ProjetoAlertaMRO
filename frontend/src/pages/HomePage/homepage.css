@@ -1,4 +1,3 @@
-/* Container de tela inteira sem scroll global desnecessário */
 .layout-container {
     display: flex;
     flex-direction: column;
@@ -7,15 +6,13 @@
     overflow: hidden;
 }
 
-/* Corpo que segura a Sidebar e a área de Conteúdo */
 .layout-body {
     display: flex;
     flex: 1;
-    height: calc(100vh - 60px); /* Subtrai a altura do Header */
+    height: calc(100vh - 60px);
     overflow: hidden;
 }
 
-/* Área central dinâmica (HomeContent) */
 .main-content {
     flex: 1;
     padding: 2rem;

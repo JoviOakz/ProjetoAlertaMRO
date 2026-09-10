@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import './dashboardcontent.css';
-import { api } from '@/services/api'; // Ajuste o caminho conforme o seu projeto
+import { api } from '@/services/api';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -13,7 +13,6 @@ import {
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 
-// Registra os componentes necessários do Chart.js
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -128,33 +127,33 @@ const DashboardContent = () => {
     };
 
     return (
-        <section className="dashboard-container">
-            <h1 className="page-title">Dashboard</h1>
+        <section className='dashboard-container'>
+            <h1 className='page-title'>Dashboard</h1>
 
-            <div className="dashboard-card">
+            <div className='dashboard-card'>
                 {loading || !data ? (
-                    <div className="loading-container">Carregando indicadores...</div>
+                    <div className='loading-container'>Carregando indicadores...</div>
                 ) : (
-                    <div className="dashboard-grid">
+                    <div className='dashboard-grid'>
                         {/* Gráfico Superior: Barras */}
-                        <div className="chart-box full-width">
-                            <h2 className="chart-title">QTD alertas disparados por mês</h2>
-                            <div className="chart-wrapper bar-height">
+                        <div className='chart-box full-width'>
+                            <h2 className='chart-title'>QTD alertas disparados por mês</h2>
+                            <div className='chart-wrapper bar-height'>
                                 <Bar data={barData} options={barOptions} />
                             </div>
                         </div>
 
                         {/* Gráficos Inferiores: Pizzas */}
-                        <div className="chart-box">
-                            <h2 className="chart-title">Status alertas</h2>
-                            <div className="chart-wrapper pie-height">
+                        <div className='chart-box'>
+                            <h2 className='chart-title'>Status alertas</h2>
+                            <div className='chart-wrapper pie-height'>
                                 <Pie data={pieStatusData} options={pieOptions} />
                             </div>
                         </div>
 
-                        <div className="chart-box">
-                            <h2 className="chart-title">QTD alertas por tipo de material</h2>
-                            <div className="chart-wrapper pie-height">
+                        <div className='chart-box'>
+                            <h2 className='chart-title'>QTD alertas por tipo de material</h2>
+                            <div className='chart-wrapper pie-height'>
                                 <Pie data={pieTypeData} options={pieOptions} />
                             </div>
                         </div>

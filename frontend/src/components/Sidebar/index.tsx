@@ -16,9 +16,9 @@ const Sidebar = ({ isOpen, onToggle, activeMenu, onSelectMenu }: SidebarProps) =
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : 'collapsed'}`}>
-            <div className="sidebar-header">
-                <button className="toggle-button" onClick={onToggle} aria-label="Alternar Menu">
-                    <span className="hamburger-icon">
+            <div className='sidebar-header'>
+                <button className='toggle-button' onClick={onToggle} aria-label='Alternar Menu'>
+                    <span className='hamburger-icon'>
                         <span></span>
                         <span></span>
                         <span></span>
@@ -26,10 +26,10 @@ const Sidebar = ({ isOpen, onToggle, activeMenu, onSelectMenu }: SidebarProps) =
                 </button>
             </div>
 
-            <nav className="sidebar-nav">
+            <nav className='sidebar-nav'>
                 {menuItems.map((item) => (
                     <button key={item.id} className={`sidebar-link ${activeMenu === item.id ? 'active' : ''}`} onClick={() => onSelectMenu(item.id)}>
-                        <span className="link-text">{item.label}</span>
+                        <span className='link-text'>{item.label}</span>
                     </button>
                 ))}
             </nav>
