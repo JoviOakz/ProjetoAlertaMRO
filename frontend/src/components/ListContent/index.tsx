@@ -1,20 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { api } from '@/services/api';
 import './listcontent.css';
 
 export interface MaterialAcimaMedia {
     pn: string;
     mrp: string;
-    descricao: string;
-    valorMedia: string | number;
-    delta: string | number;
+    data: string;
+    valorMedia: number;
+    consumoMesAtual: number;
 }
 
 export interface MaterialTendencia {
     pn: string;
     mrp: string;
+    data: string;
     descricao: string;
-    status: 'SUBINDO' | 'DESCENDO';
+    status: 'Subindo' | 'Estável';
 }
 
 interface ListaApiResponse {
@@ -22,18 +23,22 @@ interface ListaApiResponse {
     materiaisTendencia: MaterialTendencia[];
 }
 
+type SortField = 'pn' | 'mrp' | 'data' | 'valorMedia' | 'consumoMesAtual';
+type SortOrder = 'asc' | 'desc';
+
 const ListContent = () => {
     const [materiaisMedia, setMateriaisMedia] = useState<MaterialAcimaMedia[]>([]);
     const [materiaisTendencia, setMateriaisTendencia] = useState<MaterialTendencia[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
+    const [sortField, setSortField] = useState<SortField>('consumoMesAtual');
+    const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-
                 const response = await api.get<ListaApiResponse>('/lista');
-
                 setMateriaisMedia(response.data.materiaisMedia);
                 setMateriaisTendencia(response.data.materiaisTendencia);
             } catch (error) {
@@ -45,6 +50,35 @@ const ListContent = () => {
 
         fetchData();
     }, []);
+
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortOrder('asc');
+        }
+    };
+
+    const sortedMateriaisMedia = useMemo(() => {
+        return [...materiaisMedia].sort((a, b) => {
+            const valA = a[sortField];
+            const valB = b[sortField];
+
+            if (typeof valA === 'string' && typeof valB === 'string') {
+                return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+
+            if (Number(valA) < Number(valB)) return sortOrder === 'asc' ? -1 : 1;
+            if (Number(valA) > Number(valB)) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [materiaisMedia, sortField, sortOrder]);
+
+    const renderArrow = (field: SortField) => {
+        if (sortField !== field) return '▼';
+        return sortOrder === 'asc' ? '▲' : '▼';
+    };
 
     return (
         <section className='lista-container'>
@@ -58,11 +92,36 @@ const ListContent = () => {
                         <table className='custom-table'>
                             <thead>
                                 <tr>
-                                    <th>PN</th>
-                                    <th>MRP</th>
-                                    <th>DESCRIÇÃO</th>
-                                    <th>VALOR MÉDIA</th>
-                                    <th>DELTA</th>
+                                    <th onClick={() => handleSort('pn')} style={{ cursor: 'pointer' }}>
+                                        <div className='th-content'>
+                                            <span>PartNumber</span>
+                                            <button className='filter-btn' title='Filtrar'>{renderArrow('pn')}</button>
+                                        </div>
+                                    </th>
+                                    <th onClick={() => handleSort('mrp')} style={{ cursor: 'pointer' }}>
+                                        <div className='th-content'>
+                                            <span>MRP</span>
+                                            <button className='filter-btn' title='Filtrar'>{renderArrow('mrp')}</button>
+                                        </div>
+                                    </th>
+                                    <th onClick={() => handleSort('data')} style={{ cursor: 'pointer' }}>
+                                        <div className='th-content'>
+                                            <span>Data ultrapassagem</span>
+                                            <button className='filter-btn' title='Filtrar'>{renderArrow('data')}</button>
+                                        </div>
+                                    </th>
+                                    <th onClick={() => handleSort('valorMedia')} style={{ cursor: 'pointer' }}>
+                                        <div className='th-content'>
+                                            <span>Média</span>
+                                            <button className='filter-btn' title='Filtrar'>{renderArrow('valorMedia')}</button>
+                                        </div>
+                                    </th>
+                                    <th onClick={() => handleSort('consumoMesAtual')} style={{ cursor: 'pointer' }}>
+                                        <div className='th-content'>
+                                            <span>Retirado</span>
+                                            <button className='filter-btn' title='Filtrar'>{renderArrow('consumoMesAtual')}</button>
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -70,18 +129,18 @@ const ListContent = () => {
                                     <tr>
                                         <td colSpan={5} className='loading-td'>Carregando...</td>
                                     </tr>
-                                ) : materiaisMedia.length === 0 ? (
+                                ) : sortedMateriaisMedia.length === 0 ? (
                                     <tr>
                                         <td colSpan={5} className='empty-td'>Nenhum registro encontrado</td>
                                     </tr>
                                 ) : (
-                                    materiaisMedia.map((item, index) => (
+                                    sortedMateriaisMedia.map((item, index) => (
                                         <tr key={index}>
                                             <td>{item.pn}</td>
                                             <td>{item.mrp}</td>
-                                            <td>{item.descricao}</td>
+                                            <td>{item.data}</td>
                                             <td>{item.valorMedia}</td>
-                                            <td className='delta-column'>{item.delta}</td>
+                                            <td>{item.consumoMesAtual}</td>
                                         </tr>
                                     ))
                                 )}

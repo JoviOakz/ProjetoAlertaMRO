@@ -6,7 +6,7 @@ export class AndonController {
         try {
             const { partNumber, status } = req.query;
 
-            const registros = await db('materiais_movimentacoes').select('*');
+            const registros = await db('daily').select('*');
 
             let andonItems = registros.slice(0, 20).map((item: any) => ({
                 partNumber: item.material,
