@@ -87,7 +87,8 @@ const ListContent = () => {
             <div className='tables-grid'>
                 {/* Tabela 1: Materiais > Média */}
                 <div className='table-card'>
-                    <h2 className='card-title'>MATERIAIS &gt; MÉDIA ÚLTIMOS 3 MESES</h2>
+                    <h2 className='card-title'>MATERIAIS QUE ATINGIRAM A MÉDIA NOS ÚLTIMOS 3 MESES</h2>
+                    {/* <h2 className='card-title'>MATERIAIS &gt; MÉDIA ÚLTIMOS 3 MESES</h2> */}
                     <div className='table-wrapper'>
                         <table className='custom-table'>
                             <thead>

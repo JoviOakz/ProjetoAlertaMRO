@@ -52,7 +52,7 @@ export class SyncService {
                         CASE
                             WHEN MSEG.bwart IN ('201', '221', '261', '281', '963')
                                 THEN ABS(MSEG.menge)
-                            WHEN MSEG.bwart IN ('102', '202', '222', '262', '928', '101')
+                            WHEN MSEG.bwart IN ('202', '222', '262', '928', '964')
                                 THEN -ABS(MSEG.menge)
                         END AS quantity,
                         MSEG.meins AS unity,
@@ -68,7 +68,7 @@ export class SyncService {
                         ON MSEG.matnr = MDKP.matnr
                     WHERE MARA.mtart IN ('HIBE', 'FHMI')
                       AND MSEG.lgort = '6821'
-                      AND MSEG.bwart IN ('201', '221', '261', '281', '963', '101', '102', '202', '222', '262', '928')
+                      AND MSEG.bwart IN ('201', '221', '261', '281', '963', '202', '222', '262', '928', '964')
                       AND MSEG.budat_mkpf >= TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE), -12), 'YYYYMMDD')
                       AND MSEG.budat_mkpf <= TO_CHAR(TRUNC(SYSDATE), 'YYYYMMDD')
                       AND MDKP.dispo IN (
@@ -185,6 +185,7 @@ export class SyncService {
                             ) as cumulative_qty
                         FROM daily
                         WHERE substr(movement_date, 1, 6) = ?
+                        AND total_quantity > 0
                     ),
                     crossing_events AS (
                         SELECT 
@@ -195,9 +196,8 @@ export class SyncService {
                                 ORDER BY COALESCE(movement_timestamp, movement_date) ASC, id ASC
                             ) as rn
                         FROM cur_month_movements
-                        WHERE avg_3m_quantity IS NOT NULL 
-                        AND avg_3m_quantity > 0 
-                        AND cumulative_qty >= avg_3m_quantity
+                        WHERE (COALESCE(avg_3m_quantity, 0) > 0 AND cumulative_qty > avg_3m_quantity)
+                        OR (COALESCE(avg_3m_quantity, 0) = 0 AND cumulative_qty > 0)
                     )
                     SELECT material, crossing_ts
                     FROM crossing_events
