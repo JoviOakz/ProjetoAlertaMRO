@@ -31,7 +31,7 @@ const ListContent = () => {
     const [materiaisTendencia, setMateriaisTendencia] = useState<MaterialTendencia[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
-    const [sortField, setSortField] = useState<SortField>('consumoMesAtual');
+    const [sortField, setSortField] = useState<SortField>('valorMedia');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
     useEffect(() => {
