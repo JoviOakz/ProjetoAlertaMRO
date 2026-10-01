@@ -30,102 +30,42 @@ export class ListService {
         const now = new Date();
         const currentMonthPrefix = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0');
 
+        // Busca direto da tabela ANDON cruzando com os totais! Fica muito mais rápido.
         const rawResults = await db.raw(`
-            WITH cur_month_totals AS (
-                SELECT 
-                    material,
-                    SUM(total_quantity) as consumoMesAtual,
-                    MAX(avg_3m_quantity) as valorMedia3M,
-                    MAX(crossing_timestamp_local) as crossing_timestamp_local
-                FROM daily
-                WHERE substr(movement_date, 1, 6) = ?
-                GROUP BY material
-            ),
-            cur_month_movements AS (
-                SELECT 
-                    id,
-                    material,
-                    movement_timestamp,
-                    movement_date,
-                    total_quantity,
-                    avg_3m_quantity,
-                    SUM(total_quantity) OVER (
-                        PARTITION BY material 
-                        ORDER BY COALESCE(movement_timestamp, movement_date) ASC, id ASC
-                    ) as cumulative_qty
-                FROM daily
-                WHERE substr(movement_date, 1, 6) = ?
-            ),
-            dynamic_crossing AS (
-                SELECT 
-                    material,
-                    COALESCE(movement_timestamp, movement_date) as dynamic_ts,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY material 
-                        ORDER BY COALESCE(movement_timestamp, movement_date) ASC, id ASC
-                    ) as rn
-                FROM cur_month_movements
-                WHERE avg_3m_quantity IS NOT NULL 
-                  AND avg_3m_quantity > 0 
-                  AND cumulative_qty >= avg_3m_quantity
-            ),
-            material_meta AS (
-                SELECT material, mrp_id,
-                    ROW_NUMBER() OVER(PARTITION BY material ORDER BY COALESCE(movement_timestamp, movement_date) DESC) as rn
-                FROM daily
-                WHERE substr(movement_date, 1, 6) = ?
-            )
             SELECT 
-                cmt.material as pn,
-                COALESCE(mm.mrp_id, 'N/D') as mrp,
-                COALESCE(cmt.crossing_timestamp_local, dc.dynamic_ts) as raw_date,
-                ROUND(cmt.consumoMesAtual) as consumoMesAtual,
-                ROUND(COALESCE(cmt.valorMedia3M, 0)) as valorMedia3M
-            FROM cur_month_totals cmt
-            LEFT JOIN dynamic_crossing dc ON cmt.material = dc.material AND dc.rn = 1
-            LEFT JOIN material_meta mm ON cmt.material = mm.material AND mm.rn = 1
-            WHERE cmt.valorMedia3M >= 0 
-              AND cmt.consumoMesAtual >= cmt.valorMedia3M
-            ORDER BY cmt.consumoMesAtual DESC
+                a.material as pn,
+                a.mrp_id as mrp,
+                a.data_alerta as raw_date,
+                a.consumo_atual as consumoMesAtual,
+                a.limite_permitido as limitePermitido,
+                a.status
+            FROM andon a
+            WHERE a.mes_referencia = ?
+            ORDER BY a.consumo_atual DESC
             LIMIT 50
-        `, [currentMonthPrefix, currentMonthPrefix, currentMonthPrefix]);
+        `, [currentMonthPrefix]);
 
         const rows = Array.isArray(rawResults) ? rawResults : (rawResults.rows || []);
 
         const monthlyTotals = rows.map((item: any) => ({
             pn: item.pn,
-            mrp: item.mrp || 'N/D',
+            mrp: item.mrp,
             data: formatTimestamp(item.raw_date),
-            valorMedia: Math.round(Number(item.valorMedia3M || 0)),
+            limitePermitido: Math.round(Number(item.limitePermitido || 0)),
             consumoMesAtual: Math.round(Number(item.consumoMesAtual || 0)),
+            statusAndon: item.status
         }));
 
+        // Mantém a tendência como você fez (podemos evoluir depois)
         const rawTendencia = await db.raw(`
             WITH cur_month AS (
-                SELECT 
-                    material,
-                    SUM(total_quantity) as consumoMesAtual,
-                    MAX(avg_3m_quantity) as valorMedia3M
-                FROM daily
-                WHERE substr(movement_date, 1, 6) = ?
-                GROUP BY material
-            ),
-            material_mrp AS (
-                SELECT material, mrp_id,
-                       ROW_NUMBER() OVER(PARTITION BY material ORDER BY movement_date DESC) as rn
-                FROM daily
+                SELECT material, SUM(total_quantity) as consumoMesAtual, MAX(threshold_quantity) as limitePermitido
+                FROM daily WHERE substr(movement_date, 1, 6) = ? GROUP BY material
             )
-            SELECT 
-                cm.material as pn,
-                COALESCE(mm.mrp_id, 'N/D') as mrp,
-                CASE 
-                    WHEN cm.consumoMesAtual > (COALESCE(cm.valorMedia3M, 0) * 1.1) THEN 'Subindo'
-                    ELSE 'Estável'
-                END as status
+            SELECT cm.material as pn, cm.consumoMesAtual, cm.limitePermitido,
+                   CASE WHEN cm.consumoMesAtual > cm.limitePermitido THEN 'Alerta' ELSE 'Estável' END as status
             FROM cur_month cm
-            LEFT JOIN material_mrp mm ON cm.material = mm.material AND mm.rn = 1
-            ORDER BY cm.consumoMesAtual DESC
-            LIMIT 50
+            ORDER BY cm.consumoMesAtual DESC LIMIT 50
         `, [currentMonthPrefix]);
 
         const rowsTendencia = Array.isArray(rawTendencia) ? rawTendencia : (rawTendencia.rows || []);
@@ -134,7 +74,7 @@ export class ListService {
             monthlyTotals,
             materiaisTendencia: rowsTendencia.map((m: any) => ({
                 pn: m.pn,
-                mrp: m.mrp || 'N/D',
+                mrp: 'N/D',
                 descricao: 'N/D',
                 status: m.status
             })),

@@ -134,7 +134,7 @@ export class SyncService {
                     await trx('daily').insert(formattedDaily.slice(i, i + chunkSize));
                 }
 
-                // --- 1. Cálculo da média dos últimos 3 meses ---
+                // --- 1. Cálculo da média dos últimos 3 meses e do "CHORINHO" (Threshold) ---
                 const now = new Date();
                 const targetMonths: string[] = [];
                 for (let i = 1; i <= 3; i++) {
@@ -143,6 +143,7 @@ export class SyncService {
                     targetMonths.push(yyyymm);
                 }
 
+                // REGRA DO CHORINHO APLICADA AQUI NO SQL
                 const avgComputed = await trx.raw(`
                     WITH monthly_sums AS (
                         SELECT 
@@ -155,7 +156,17 @@ export class SyncService {
                     )
                     SELECT 
                         material,
-                        ROUND(SUM(qtd_mes) / 3.0, 3) as avg_3m_quantity
+                        ROUND(SUM(qtd_mes) / 3.0, 3) as avg_3m_quantity,
+                        CASE 
+                            -- Se a média for entre 0 e 2, adiciona 2 unidades fixas de gordura (ex: média 1, limite vira 3)
+                            WHEN (SUM(qtd_mes) / 3.0) <= 2 THEN (SUM(qtd_mes) / 3.0) + 2
+                            -- Se for entre 2 e 10, tolerância de 50% (x 1.5)
+                            WHEN (SUM(qtd_mes) / 3.0) <= 10 THEN (SUM(qtd_mes) / 3.0) * 1.5
+                            -- Se for entre 10 e 50, tolerância de 20% (x 1.2)
+                            WHEN (SUM(qtd_mes) / 3.0) <= 50 THEN (SUM(qtd_mes) / 3.0) * 1.2
+                            -- Se for maior que 50, tolerância de 10% (x 1.1)
+                            ELSE (SUM(qtd_mes) / 3.0) * 1.1
+                        END as threshold_quantity
                     FROM monthly_sums
                     GROUP BY material
                 `, targetMonths);
@@ -164,21 +175,19 @@ export class SyncService {
                 for (const item of rowsAvg) {
                     await trx('daily')
                         .where('material', item.material)
-                        .update({ avg_3m_quantity: Number(item.avg_3m_quantity) || 0 });
+                        .update({
+                            avg_3m_quantity: Number(item.avg_3m_quantity) || 0,
+                            threshold_quantity: Number(item.threshold_quantity) || 0
+                        });
                 }
 
-                // --- 2. Cálculo do Crossing Timestamp (mês atual) ---
+                // --- 2. Cálculo do Crossing Timestamp (mês atual) baseado no NOVO LIMITE ---
                 const currentMonthPrefix = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0');
 
                 const crossingComputed = await trx.raw(`
                     WITH cur_month_movements AS (
                         SELECT 
-                            id,
-                            material,
-                            movement_timestamp,
-                            movement_date,
-                            total_quantity,
-                            avg_3m_quantity,
+                            id, material, movement_timestamp, movement_date, total_quantity, threshold_quantity, mrp_id,
                             SUM(total_quantity) OVER (
                                 PARTITION BY material 
                                 ORDER BY COALESCE(movement_timestamp, movement_date) ASC, id ASC
@@ -189,17 +198,16 @@ export class SyncService {
                     ),
                     crossing_events AS (
                         SELECT 
-                            material,
+                            material, mrp_id, threshold_quantity, cumulative_qty,
                             COALESCE(movement_timestamp, movement_date) as crossing_ts,
                             ROW_NUMBER() OVER (
                                 PARTITION BY material 
                                 ORDER BY COALESCE(movement_timestamp, movement_date) ASC, id ASC
                             ) as rn
                         FROM cur_month_movements
-                        WHERE (COALESCE(avg_3m_quantity, 0) > 0 AND cumulative_qty > avg_3m_quantity)
-                        OR (COALESCE(avg_3m_quantity, 0) = 0 AND cumulative_qty > 0)
+                        WHERE (COALESCE(threshold_quantity, 0) > 0 AND cumulative_qty > threshold_quantity)
                     )
-                    SELECT material, crossing_ts
+                    SELECT material, mrp_id, threshold_quantity, cumulative_qty, crossing_ts
                     FROM crossing_events
                     WHERE rn = 1
                 `, [currentMonthPrefix]);
@@ -212,7 +220,6 @@ export class SyncService {
                     if (localTs) {
                         const dateObj = new Date(localTs);
                         if (!isNaN(dateObj.getTime())) {
-                            // Subtrai 3 horas para ajustar ao fuso horário local (UTC-3)
                             dateObj.setHours(dateObj.getHours() - 3);
                             localTs = dateObj.toISOString();
                         }
@@ -221,6 +228,29 @@ export class SyncService {
                     await trx('daily')
                         .where('material', item.material)
                         .update({ crossing_timestamp_local: localTs });
+
+                    // --- 3. INSERE NA TABELA ANDON AUTOMATICAMENTE ---
+                    // Verifica se já não está no histórico resolvido desse mês
+                    const resolvido = await trx('historico')
+                        .where({ material: item.material, mes_referencia: currentMonthPrefix })
+                        .first();
+
+                    if (!resolvido) {
+                        // Insere no Andon (O 'ON CONFLICT IGNORE' evita duplicar se a sync rodar 2x)
+                        await trx.raw(`
+                            INSERT INTO andon (material, mrp_id, mes_referencia, data_alerta, consumo_atual, limite_permitido)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                            ON CONFLICT(material, mes_referencia) DO UPDATE SET 
+                            consumo_atual = excluded.consumo_atual
+                        `, [
+                            item.material,
+                            item.mrp_id || 'N/D',
+                            currentMonthPrefix,
+                            localTs,
+                            item.cumulative_qty,
+                            item.threshold_quantity
+                        ]);
+                    }
                 }
             });
 
