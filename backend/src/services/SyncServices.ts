@@ -42,19 +42,16 @@ export class SyncService {
                 connectString: process.env.ORACLE_CONN_STRING || 'REDLake_ZeusP_Consumer_Common.world',
             });
 
+            // QUERY ORACLE COM JOIN DA MAKT_PS0 (Descrição em Português)
             const mainQuery = `
                 WITH base AS (
                     SELECT DISTINCT
                         MSEG.matnr AS material,
+                        MAKT.maktx AS description,
                         MSEG.mblnr AS material_doc,
                         MARA.mtart AS material_type,
                         MSEG.bwart AS move_type,
-                        CASE
-                            WHEN MSEG.bwart IN ('201', '221', '261', '281', '963')
-                                THEN ABS(MSEG.menge)
-                            WHEN MSEG.bwart IN ('202', '222', '262', '928', '964')
-                                THEN -ABS(MSEG.menge)
-                        END AS quantity,
+                        ABS(MSEG.menge) AS quantity,
                         MSEG.meins AS unity,
                         MSEG.aufnr AS order_number,
                         MSEG.dmbtr AS price,
@@ -62,13 +59,12 @@ export class SyncService {
                         MSEG.tech_timestamp_number AS tech_timestamp,
                         MDKP.dispo AS mrp_id
                     FROM MARD_MDNA.V_CUSN_MSEG_B2 MSEG
-                    INNER JOIN MARD_DALI_BBM.MARA_PS0 MARA
-                        ON MSEG.matnr = MARA.matnr
-                    INNER JOIN MARD_MDNA.V_CUSN_MDKP_B2 MDKP
-                        ON MSEG.matnr = MDKP.matnr
+                    INNER JOIN MARD_DALI_BBM.MARA_PS0 MARA ON MSEG.matnr = MARA.matnr
+                    INNER JOIN MARD_MDNA.V_CUSN_MDKP_B2 MDKP ON MSEG.matnr = MDKP.matnr
+                    LEFT JOIN MARD_DALI_BBM.MAKT_PS0 MAKT ON MSEG.matnr = MAKT.matnr AND MAKT.spras = 'P'
                     WHERE MARA.mtart IN ('HIBE', 'FHMI')
                       AND MSEG.lgort = '6821'
-                      AND MSEG.bwart IN ('201', '221', '261', '281', '963', '202', '222', '262', '928', '964')
+                      AND MSEG.bwart IN ('201', '221', '261', '281', '963')
                       AND MSEG.budat_mkpf >= TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE), -12), 'YYYYMMDD')
                       AND MSEG.budat_mkpf <= TO_CHAR(TRUNC(SYSDATE), 'YYYYMMDD')
                       AND MDKP.dispo IN (
@@ -79,6 +75,7 @@ export class SyncService {
                 )
                 SELECT
                     material AS "material",
+                    MAX(description) AS "description",
                     doc_date AS "movement_date",
                     SUM(quantity) AS "total_quantity",
                     MAX(tech_timestamp) AS "last_tech_timestamp",
@@ -116,6 +113,7 @@ export class SyncService {
                     if (!uniqueMap.has(indexKey)) {
                         uniqueMap.set(indexKey, {
                             material: r.material,
+                            description: r.description || 'Sem Descrição',
                             movement_date: r.movement_date,
                             total_quantity: r.total_quantity,
                             last_tech_timestamp: r.last_tech_timestamp ? String(r.last_tech_timestamp) : null,
@@ -123,6 +121,7 @@ export class SyncService {
                             mrp_id: r.mrp_id,
                             index_key: indexKey,
                             avg_3m_quantity: null,
+                            threshold_quantity: null,
                             crossing_timestamp_local: null,
                         });
                     }
@@ -134,7 +133,7 @@ export class SyncService {
                     await trx('daily').insert(formattedDaily.slice(i, i + chunkSize));
                 }
 
-                // --- 1. Cálculo da média dos últimos 3 meses e do "CHORINHO" (Threshold) ---
+                // 1. Média dos 3 meses (Fixa divisão por 3)
                 const now = new Date();
                 const targetMonths: string[] = [];
                 for (let i = 1; i <= 3; i++) {
@@ -143,7 +142,6 @@ export class SyncService {
                     targetMonths.push(yyyymm);
                 }
 
-                // REGRA DO CHORINHO APLICADA AQUI NO SQL
                 const avgComputed = await trx.raw(`
                     WITH monthly_sums AS (
                         SELECT 
@@ -153,22 +151,24 @@ export class SyncService {
                         FROM daily
                         WHERE substr(movement_date, 1, 6) IN (?, ?, ?)
                         GROUP BY material, substr(movement_date, 1, 6)
+                    ),
+                    media_calculada AS (
+                        SELECT 
+                            material,
+                            ROUND(SUM(qtd_mes) / 3.0, 3) as avg_3m_quantity
+                        FROM monthly_sums
+                        GROUP BY material
                     )
                     SELECT 
                         material,
-                        ROUND(SUM(qtd_mes) / 3.0, 3) as avg_3m_quantity,
+                        avg_3m_quantity,
                         CASE 
-                            -- Se a média for entre 0 e 2, adiciona 2 unidades fixas de gordura (ex: média 1, limite vira 3)
-                            WHEN (SUM(qtd_mes) / 3.0) <= 2 THEN (SUM(qtd_mes) / 3.0) + 2
-                            -- Se for entre 2 e 10, tolerância de 50% (x 1.5)
-                            WHEN (SUM(qtd_mes) / 3.0) <= 10 THEN (SUM(qtd_mes) / 3.0) * 1.5
-                            -- Se for entre 10 e 50, tolerância de 20% (x 1.2)
-                            WHEN (SUM(qtd_mes) / 3.0) <= 50 THEN (SUM(qtd_mes) / 3.0) * 1.2
-                            -- Se for maior que 50, tolerância de 10% (x 1.1)
-                            ELSE (SUM(qtd_mes) / 3.0) * 1.1
+                            WHEN avg_3m_quantity <= 2 THEN avg_3m_quantity + 2
+                            WHEN avg_3m_quantity <= 10 THEN avg_3m_quantity * 1.5
+                            WHEN avg_3m_quantity <= 50 THEN avg_3m_quantity * 1.2
+                            ELSE avg_3m_quantity * 1.1
                         END as threshold_quantity
-                    FROM monthly_sums
-                    GROUP BY material
+                    FROM media_calculada
                 `, targetMonths);
 
                 const rowsAvg = Array.isArray(avgComputed) ? avgComputed : (avgComputed.rows || []);
@@ -181,13 +181,13 @@ export class SyncService {
                         });
                 }
 
-                // --- 2. Cálculo do Crossing Timestamp (mês atual) baseado no NOVO LIMITE ---
+                // 2. Disparo do Alerta ANDON (Gravando também a descrição)
                 const currentMonthPrefix = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0');
 
                 const crossingComputed = await trx.raw(`
                     WITH cur_month_movements AS (
                         SELECT 
-                            id, material, movement_timestamp, movement_date, total_quantity, threshold_quantity, mrp_id,
+                            id, material, description, movement_timestamp, movement_date, total_quantity, threshold_quantity, avg_3m_quantity, mrp_id,
                             SUM(total_quantity) OVER (
                                 PARTITION BY material 
                                 ORDER BY COALESCE(movement_timestamp, movement_date) ASC, id ASC
@@ -198,7 +198,7 @@ export class SyncService {
                     ),
                     crossing_events AS (
                         SELECT 
-                            material, mrp_id, threshold_quantity, cumulative_qty,
+                            material, description, mrp_id, threshold_quantity, avg_3m_quantity, cumulative_qty,
                             COALESCE(movement_timestamp, movement_date) as crossing_ts,
                             ROW_NUMBER() OVER (
                                 PARTITION BY material 
@@ -207,7 +207,7 @@ export class SyncService {
                         FROM cur_month_movements
                         WHERE (COALESCE(threshold_quantity, 0) > 0 AND cumulative_qty > threshold_quantity)
                     )
-                    SELECT material, mrp_id, threshold_quantity, cumulative_qty, crossing_ts
+                    SELECT material, description, mrp_id, threshold_quantity, avg_3m_quantity, cumulative_qty, crossing_ts
                     FROM crossing_events
                     WHERE rn = 1
                 `, [currentMonthPrefix]);
@@ -229,32 +229,35 @@ export class SyncService {
                         .where('material', item.material)
                         .update({ crossing_timestamp_local: localTs });
 
-                    // --- 3. INSERE NA TABELA ANDON AUTOMATICAMENTE ---
-                    // Verifica se já não está no histórico resolvido desse mês
                     const resolvido = await trx('historico')
                         .where({ material: item.material, mes_referencia: currentMonthPrefix })
                         .first();
 
                     if (!resolvido) {
-                        // Insere no Andon (O 'ON CONFLICT IGNORE' evita duplicar se a sync rodar 2x)
                         await trx.raw(`
-                            INSERT INTO andon (material, mrp_id, mes_referencia, data_alerta, consumo_atual, limite_permitido)
-                            VALUES (?, ?, ?, ?, ?, ?)
+                            INSERT INTO andon (material, description, mrp_id, mes_referencia, data_alerta, consumo_atual, media_3m, limite_permitido)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                             ON CONFLICT(material, mes_referencia) DO UPDATE SET 
-                            consumo_atual = excluded.consumo_atual
+                            description = excluded.description,
+                            mrp_id = excluded.mrp_id, -- <--- Adicionado aqui
+                            consumo_atual = excluded.consumo_atual,
+                            media_3m = excluded.media_3m,
+                            limite_permitido = excluded.limite_permitido
                         `, [
                             item.material,
+                            item.description || 'Sem Descrição',
                             item.mrp_id || 'N/D',
                             currentMonthPrefix,
                             localTs,
                             item.cumulative_qty,
+                            item.avg_3m_quantity,
                             item.threshold_quantity
                         ]);
                     }
                 }
             });
 
-            console.log('Sincronização finalizada!');
+            console.log('Sincronização finalizada com sucesso!');
         } catch (error) {
             console.error('Erro na sync:', error);
             throw error;

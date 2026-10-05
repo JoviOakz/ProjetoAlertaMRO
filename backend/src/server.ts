@@ -21,13 +21,25 @@ initDb().then(async () => {
     app.listen(PORT, async () => {
         console.log(`Servidor backend rodando em http://localhost:${PORT}`);
 
-        // Sincronização automática na subida do backend
+        const syncService = new SyncService();
+
+        // 1. Sincronização inicial na subida do backend
         try {
-            const syncService = new SyncService();
             await syncService.executeSync();
         } catch (syncError) {
             console.error('❌ Erro na sincronização inicial do backend:', syncError);
         }
+
+        // 2. Sincronização periódica a cada 1 hora (3.600.000 ms)
+        const UMA_HORA_EM_MS = 1000 * 60 * 60;
+        setInterval(async () => {
+            console.log('Executando sincronização automática periódica...');
+            try {
+                await syncService.executeSync();
+            } catch (periodicSyncError) {
+                console.error('❌ Erro na sincronização periódica do backend:', periodicSyncError);
+            }
+        }, UMA_HORA_EM_MS);
     });
 }).catch((error) => {
     console.error('Erro ao inicializar o banco de dados:', error);

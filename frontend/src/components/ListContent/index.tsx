@@ -18,11 +18,6 @@ export interface MaterialTendencia {
     status: 'Subindo' | 'Estável';
 }
 
-interface ListaApiResponse {
-    materiaisMedia: MaterialAcimaMedia[];
-    materiaisTendencia: MaterialTendencia[];
-}
-
 type SortField = 'pn' | 'mrp' | 'data' | 'valorMedia' | 'consumoMesAtual';
 type SortOrder = 'asc' | 'desc';
 
@@ -38,11 +33,33 @@ const ListContent = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const response = await api.get<ListaApiResponse>('/lista');
-                setMateriaisMedia(response.data.materiaisMedia);
-                setMateriaisTendencia(response.data.materiaisTendencia);
+                const response = await api.get('/lista');
+                const resData = response.data || {};
+                const rawMedia = resData.materiaisMedia || resData.materiais_media || [];
+                const rawTendencia = resData.materiaisTendencia || resData.materiais_tendencia || [];
+
+                const normalizedMedia: MaterialAcimaMedia[] = rawMedia.map((item: any) => ({
+                    pn: item.pn || item.part_number || item.partNumber || '',
+                    mrp: item.mrp || item.responsavel || '',
+                    data: item.data || item.data_ultrapassagem || '',
+                    valorMedia: Number(item.valorMedia ?? item.valor_media ?? 0),
+                    consumoMesAtual: Number(item.consumoMesAtual ?? item.consumo_mes_atual ?? 0)
+                }));
+
+                const normalizedTendencia: MaterialTendencia[] = rawTendencia.map((item: any) => ({
+                    pn: item.pn || item.part_number || item.partNumber || '',
+                    mrp: item.mrp || item.responsavel || '',
+                    data: item.data || '',
+                    descricao: item.descricao || item.description || '',
+                    status: item.status || 'Estável'
+                }));
+
+                setMateriaisMedia(normalizedMedia);
+                setMateriaisTendencia(normalizedTendencia);
             } catch (error) {
                 console.error('Erro ao carregar dados da API:', error);
+                setMateriaisMedia([]);
+                setMateriaisTendencia([]);
             } finally {
                 setLoading(false);
             }
@@ -61,6 +78,7 @@ const ListContent = () => {
     };
 
     const sortedMateriaisMedia = useMemo(() => {
+        if (!Array.isArray(materiaisMedia)) return [];
         return [...materiaisMedia].sort((a, b) => {
             const valA = a[sortField];
             const valB = b[sortField];
@@ -69,8 +87,11 @@ const ListContent = () => {
                 return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
             }
 
-            if (Number(valA) < Number(valB)) return sortOrder === 'asc' ? -1 : 1;
-            if (Number(valA) > Number(valB)) return sortOrder === 'asc' ? 1 : -1;
+            const numA = Number(valA ?? 0);
+            const numB = Number(valB ?? 0);
+
+            if (numA < numB) return sortOrder === 'asc' ? -1 : 1;
+            if (numA > numB) return sortOrder === 'asc' ? 1 : -1;
             return 0;
         });
     }, [materiaisMedia, sortField, sortOrder]);
@@ -85,7 +106,6 @@ const ListContent = () => {
             <h1 className='page-title'>Lista</h1>
 
             <div className='tables-grid'>
-                {/* Tabela 1: Materiais > Média */}
                 <div className='table-card'>
                     <h2 className='card-title'>MATERIAIS QUE ULTRAPASSARAM A MÉDIA DOS ÚLTIMOS 3 MESES</h2>
                     <div className='table-wrapper'>
@@ -135,7 +155,7 @@ const ListContent = () => {
                                     </tr>
                                 ) : (
                                     sortedMateriaisMedia.map((item, index) => (
-                                        <tr key={index}>
+                                        <tr key={item.pn || index}>
                                             <td>{item.pn}</td>
                                             <td>{item.mrp}</td>
                                             <td>{item.data}</td>
@@ -173,11 +193,11 @@ const ListContent = () => {
                                     </tr>
                                 ) : (
                                     materiaisTendencia.map((item, index) => (
-                                        <tr key={index}>
+                                        <tr key={item.pn || index}>
                                             <td>{item.pn}</td>
                                             <td>{item.mrp}</td>
                                             <td>{item.descricao}</td>
-                                            <td className={`text-right status-cell ${item.status.toLowerCase()}`}>
+                                            <td className={`text-right status-cell ${(item.status || '').toLowerCase()}`}>
                                                 {item.status}
                                             </td>
                                         </tr>

@@ -30,13 +30,13 @@ export class ListService {
         const now = new Date();
         const currentMonthPrefix = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0');
 
-        // Busca direto da tabela ANDON cruzando com os totais! Fica muito mais rápido.
         const rawResults = await db.raw(`
             SELECT 
                 a.material as pn,
                 a.mrp_id as mrp,
                 a.data_alerta as raw_date,
                 a.consumo_atual as consumoMesAtual,
+                a.media_3m as media3M,
                 a.limite_permitido as limitePermitido,
                 a.status
             FROM andon a
@@ -51,6 +51,7 @@ export class ListService {
             pn: item.pn,
             mrp: item.mrp,
             data: formatTimestamp(item.raw_date),
+            valorMedia: Math.round(Number(item.media3M || 0)),
             limitePermitido: Math.round(Number(item.limitePermitido || 0)),
             consumoMesAtual: Math.round(Number(item.consumoMesAtual || 0)),
             statusAndon: item.status
