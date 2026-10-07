@@ -33,6 +33,7 @@ export class ListService {
         const rawResults = await db.raw(`
             SELECT 
                 a.material as pn,
+                a.description as description, -- Usa o campo direto da tabela andon
                 a.mrp_id as mrp,
                 a.data_alerta as raw_date,
                 a.consumo_atual as consumoMesAtual,
@@ -42,13 +43,13 @@ export class ListService {
             FROM andon a
             WHERE a.mes_referencia = ?
             ORDER BY a.consumo_atual DESC
-            LIMIT 50
         `, [currentMonthPrefix]);
 
         const rows = Array.isArray(rawResults) ? rawResults : (rawResults.rows || []);
 
         const monthlyTotals = rows.map((item: any) => ({
             pn: item.pn,
+            description: item.description || 'Sem Descrição',
             mrp: item.mrp,
             data: formatTimestamp(item.raw_date),
             valorMedia: Math.round(Number(item.media3M || 0)),
@@ -66,7 +67,7 @@ export class ListService {
             SELECT cm.material as pn, cm.consumoMesAtual, cm.limitePermitido,
                    CASE WHEN cm.consumoMesAtual > cm.limitePermitido THEN 'Alerta' ELSE 'Estável' END as status
             FROM cur_month cm
-            ORDER BY cm.consumoMesAtual DESC LIMIT 50
+            ORDER BY cm.consumoMesAtual DESC
         `, [currentMonthPrefix]);
 
         const rowsTendencia = Array.isArray(rawTendencia) ? rawTendencia : (rawTendencia.rows || []);
