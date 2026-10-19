@@ -73,3 +73,58 @@
     color: #888;
     padding: 3rem 0;
 }
+
+.andon-input-comentario {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    background-color: #f9fafb;
+    transition: all 0.2s ease;
+}
+
+.andon-input-comentario:focus {
+    outline: none;
+    border-color: #2563eb;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.andon-select-status {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.andon-select-status:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Cores customizadas elegantes para cada status */
+.andon-select-status.nenhuma-ação {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border-color: #e5e7eb;
+}
+
+.andon-select-status.em-análise {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-color: #fde68a;
+}
+
+.andon-select-status.concluído,
+.andon-select-status.concluido {
+    background-color: #d1fae5;
+    color: #065f46;
+    border-color: #a7f3d0;
+}

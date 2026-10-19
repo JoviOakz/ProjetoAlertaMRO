@@ -181,54 +181,26 @@ export class SyncService {
                         });
                 }
 
-                // 2. Disparo do Alerta ANDON (Gravando também a descrição)
+                // 2. Populando o Andon com os materiais ativos do mês atual
                 const currentMonthPrefix = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0');
 
-                const crossingComputed = await trx.raw(`
-                    WITH cur_month_movements AS (
-                        SELECT 
-                            id, material, description, movement_timestamp, movement_date, total_quantity, threshold_quantity, avg_3m_quantity, mrp_id,
-                            SUM(total_quantity) OVER (
-                                PARTITION BY material 
-                                ORDER BY COALESCE(movement_timestamp, movement_date) ASC, id ASC
-                            ) as cumulative_qty
-                        FROM daily
-                        WHERE substr(movement_date, 1, 6) = ?
-                        AND total_quantity > 0
-                    ),
-                    crossing_events AS (
-                        SELECT 
-                            material, description, mrp_id, threshold_quantity, avg_3m_quantity, cumulative_qty,
-                            COALESCE(movement_timestamp, movement_date) as crossing_ts,
-                            ROW_NUMBER() OVER (
-                                PARTITION BY material 
-                                ORDER BY COALESCE(movement_timestamp, movement_date) ASC, id ASC
-                            ) as rn
-                        FROM cur_month_movements
-                        WHERE (COALESCE(threshold_quantity, 0) > 0 AND cumulative_qty > threshold_quantity)
-                    )
-                    SELECT material, description, mrp_id, threshold_quantity, avg_3m_quantity, cumulative_qty, crossing_ts
-                    FROM crossing_events
-                    WHERE rn = 1
+                const andonCandidates = await trx.raw(`
+                    SELECT 
+                        material, 
+                        MAX(description) as description, 
+                        MAX(mrp_id) as mrp_id, 
+                        MAX(threshold_quantity) as threshold_quantity, 
+                        MAX(avg_3m_quantity) as avg_3m_quantity, 
+                        SUM(total_quantity) as cumulative_qty
+                    FROM daily
+                    WHERE substr(movement_date, 1, 6) = ?
+                    GROUP BY material
+                    HAVING SUM(total_quantity) > 0
                 `, [currentMonthPrefix]);
 
-                const rowsCrossing = Array.isArray(crossingComputed) ? crossingComputed : (crossingComputed.rows || []);
+                const rowsCandidates = Array.isArray(andonCandidates) ? andonCandidates : (andonCandidates.rows || []);
 
-                for (const item of rowsCrossing) {
-                    let localTs: string | null = item.crossing_ts;
-
-                    if (localTs) {
-                        const dateObj = new Date(localTs);
-                        if (!isNaN(dateObj.getTime())) {
-                            dateObj.setHours(dateObj.getHours() - 3);
-                            localTs = dateObj.toISOString();
-                        }
-                    }
-
-                    await trx('daily')
-                        .where('material', item.material)
-                        .update({ crossing_timestamp_local: localTs });
-
+                for (const item of rowsCandidates) {
                     const resolvido = await trx('historico')
                         .where({ material: item.material, mes_referencia: currentMonthPrefix })
                         .first();
@@ -236,22 +208,21 @@ export class SyncService {
                     if (!resolvido) {
                         await trx.raw(`
                             INSERT INTO andon (material, description, mrp_id, mes_referencia, data_alerta, consumo_atual, media_3m, limite_permitido)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            VALUES (?, ?, ?, ?, datetime('now'), ?, ?, ?)
                             ON CONFLICT(material, mes_referencia) DO UPDATE SET 
-                            description = excluded.description,
-                            mrp_id = excluded.mrp_id, -- <--- Adicionado aqui
-                            consumo_atual = excluded.consumo_atual,
-                            media_3m = excluded.media_3m,
-                            limite_permitido = excluded.limite_permitido
+                                description = excluded.description,
+                                mrp_id = excluded.mrp_id,
+                                consumo_atual = excluded.consumo_atual,
+                                media_3m = excluded.media_3m,
+                                limite_permitido = excluded.limite_permitido
                         `, [
                             item.material,
                             item.description || 'Sem Descrição',
                             item.mrp_id || 'N/D',
                             currentMonthPrefix,
-                            localTs,
                             item.cumulative_qty,
-                            item.avg_3m_quantity,
-                            item.threshold_quantity
+                            item.avg_3m_quantity || 0,
+                            item.threshold_quantity || 0
                         ]);
                     }
                 }

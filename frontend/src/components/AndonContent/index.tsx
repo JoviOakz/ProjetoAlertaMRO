@@ -30,11 +30,12 @@ const AndonContent = () => {
                     : (response.data?.data || []);
 
                 const normalizedData: AndonItem[] = rawData.map((item: any) => ({
-                    partNumber: item.partNumber || item.part_number || item.pn || '',
-                    description: item.description || item.descricao || '',
-                    responsavel: item.responsavel || item.mrp || '',
+                    partNumber: item.partNumber || item.part_number || item.material || item.pn || '',
+                    // Garante que vai ler qualquer variação e aplicar o fallback caso venha vazio/nulo
+                    description: item.description || item.descricao || item.desc || 'Sem Descrição',
+                    responsavel: item.responsavel || item.mrp_id || item.mrp || 'N/D',
                     comentarios: item.comentarios || '',
-                    status: item.status || 'Nenhuma ação'
+                    status: item.status || item.status_tratativa || 'Nenhuma ação'
                 }));
 
                 setAndonData(normalizedData);
